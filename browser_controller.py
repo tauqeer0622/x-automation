@@ -42,13 +42,22 @@ class BrowserController:
                 user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
             )
 
-            # Prevent navigator.webdriver flag
+            # Page initialization & anti-detection script
             self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
             self.page.add_init_script("""
                 Object.defineProperty(navigator, 'webdriver', {
                     get: () => undefined
                 });
             """)
+
+            # If X_AUTH_TOKEN is configured, inject cookie directly
+            if config.x_auth_token and config.x_auth_token.strip():
+                token = config.x_auth_token.strip()
+                self.context.add_cookies([
+                    {"name": "auth_token", "value": token, "domain": ".x.com", "path": "/", "httpOnly": True, "secure": True},
+                    {"name": "auth_token", "value": token, "domain": ".twitter.com", "path": "/", "httpOnly": True, "secure": True}
+                ])
+                add_log("INFO", "Injected X auth_token cookie into browser session.")
 
             self.is_running = True
             add_log("INFO", f"Browser controller started (headless={use_headless})")

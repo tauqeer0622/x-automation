@@ -30,6 +30,9 @@ class AppConfig(BaseModel):
     headless: bool = Field(default_factory=lambda: os.getenv("HEADLESS", "false").lower() in ("true", "1", "yes"))
     browser_data_dir: str = Field(default_factory=lambda: os.getenv("BROWSER_DATA_DIR", "./browser_data"))
 
+    # Direct Auth Token (optional - bypass manual login)
+    x_auth_token: Optional[str] = Field(default_factory=lambda: os.getenv("X_AUTH_TOKEN", ""))
+
     # Server
     web_host: str = Field(default_factory=lambda: os.getenv("WEB_HOST", "127.0.0.1"))
     web_port: int = Field(default_factory=lambda: int(os.getenv("WEB_PORT", "8000")))
