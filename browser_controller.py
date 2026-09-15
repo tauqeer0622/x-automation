@@ -126,11 +126,11 @@ class BrowserController:
             return []
 
         results: List[Dict[str, Any]] = []
-        encoded_query = urllib.parse.quote(f"{query} lang:en -is:retweet")
+        encoded_query = urllib.parse.quote(f"{query} lang:en -is:retweet -is:reply")
         search_url = f"https://x.com/search?q={encoded_query}&f=live"
 
         try:
-            add_log("INFO", f"Scanning X for: '{query}'")
+            add_log("INFO", f"Scanning X for: '{query}' (Original Posts Only)")
             self.page.goto(search_url, timeout=30000, wait_until="domcontentloaded")
             time.sleep(random.uniform(2.5, 4.0))
 
@@ -145,6 +145,11 @@ class BrowserController:
                     break
 
                 try:
+                    # Skip if this tweet is a reply or comment in a thread
+                    art_text = art.inner_text()
+                    if "Replying to @" in art_text or "replying to @" in art_text:
+                        continue
+
                     # Extract Tweet status URL and ID
                     status_link = art.query_selector('a[href*="/status/"]')
                     if not status_link:
