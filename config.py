@@ -21,7 +21,8 @@ class AppConfig(BaseModel):
     openai_model: str = Field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4o-mini"))
 
     # Anti-Ban / Rate Limits
-    dry_run: bool = Field(default_factory=lambda: os.getenv("DRY_RUN", "true").lower() in ("true", "1", "yes"))
+    dry_run: bool = Field(default_factory=lambda: os.getenv("DRY_RUN", "false").lower() in ("true", "1", "yes"))
+    auto_start: bool = Field(default_factory=lambda: os.getenv("AUTO_START", "true").lower() in ("true", "1", "yes"))
     min_delay_seconds: int = Field(default_factory=lambda: int(os.getenv("MIN_DELAY_SECONDS", "90")))
     max_delay_seconds: int = Field(default_factory=lambda: int(os.getenv("MAX_DELAY_SECONDS", "240")))
     daily_comment_limit: int = Field(default_factory=lambda: int(os.getenv("DAILY_COMMENT_LIMIT", "25")))

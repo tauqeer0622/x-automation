@@ -21,6 +21,17 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(STATIC_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+@app.on_event("startup")
+def on_startup():
+    if config.auto_start:
+        add_log("INFO", "Auto-start is ENABLED. Starting autonomous engine immediately with zero human intervention.")
+        engine.start()
+
+@app.on_event("shutdown")
+def on_shutdown():
+    if engine.state == "running":
+        engine.stop()
+
 @app.get("/")
 def serve_index():
     index_path = os.path.join(STATIC_DIR, "index.html")
