@@ -65,18 +65,28 @@ def stop_automation():
 
 @app.post("/api/browser/open-login")
 def open_browser_for_login():
-    """Opens browser in visible mode so the user can complete X login manually."""
+    """Opens browser in visible mode via independent process so the user can complete X login manually."""
+    import subprocess
+    import sys
+
     if engine.state == "running":
         engine.stop()
-    success = browser_controller.start(headless=False)
-    if success and browser_controller.page:
-        try:
-            browser_controller.page.goto("https://x.com/login", timeout=30000)
-            add_log("INFO", "Opened visible browser for X login.")
-            return {"status": "opened", "message": "Browser opened. Please log in to your X account in the browser window."}
-        except Exception as e:
-            return {"status": "error", "message": str(e)}
-    return {"status": "error", "message": "Failed to launch browser"}
+
+    login_script = os.path.join(os.path.dirname(__file__), "login.py")
+    try:
+        if sys.platform == "win32":
+            subprocess.Popen(
+                f'start cmd /k "{sys.executable}" "{login_script}"',
+                shell=True
+            )
+        else:
+            subprocess.Popen([sys.executable, login_script])
+
+        add_log("INFO", "Launched login helper window.")
+        return {"status": "opened", "message": "Login window opened! Complete login in the browser and press Enter in the terminal."}
+    except Exception as e:
+        add_log("ERROR", f"Failed to launch login process: {str(e)}")
+        return {"status": "error", "message": str(e)}
 
 class ConfigUpdateRequest(BaseModel):
     company_name: Optional[str] = None

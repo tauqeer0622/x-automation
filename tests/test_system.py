@@ -14,9 +14,10 @@ from server import app
 client = TestClient(app)
 
 def test_database_operations():
+    import uuid
     database.init_db()
     
-    test_id = "test_tweet_99999"
+    test_id = f"test_{uuid.uuid4().hex[:10]}"
     assert not database.is_tweet_processed(test_id)
     
     # Save post
