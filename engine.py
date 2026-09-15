@@ -146,12 +146,12 @@ class AutomationEngine:
                                 dry_run=config.dry_run
                             )
 
-                            status = "success" if result["success"] else "failed"
+                            status = "success" if result["success"] else ("restricted" if result.get("reason") == "restricted" else "failed")
                             mode = "dry_run" if config.dry_run else "live"
                             error_msg = result.get("message") if not result["success"] else None
 
                             save_comment(tweet_id, author, reply_text, mode, status, error_msg)
-                            update_post_status(tweet_id, status="replied" if result["success"] else "failed")
+                            update_post_status(tweet_id, status="replied" if result["success"] else status)
 
                             # If comment succeeded, apply pacing delay
                             if result["success"]:

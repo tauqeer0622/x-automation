@@ -251,12 +251,18 @@ document.addEventListener('DOMContentLoaded', () => {
             feedTableBody.innerHTML = comments.map(c => {
                 let badgeClass = 'badge-dry';
                 let badgeText = 'DRY RUN';
+                let titleAttr = '';
                 if (c.mode === 'live' && c.status === 'success') {
                     badgeClass = 'badge-success';
                     badgeText = 'LIVE SUCCESS';
+                } else if (c.status === 'restricted') {
+                    badgeClass = 'badge-dry';
+                    badgeText = 'REPLIES RESTRICTED';
+                    titleAttr = c.error_message || 'Post author turned off or restricted replies';
                 } else if (c.status === 'failed') {
                     badgeClass = 'badge-failed';
                     badgeText = 'FAILED';
+                    titleAttr = c.error_message || '';
                 }
 
                 const timeStr = new Date(c.posted_at + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -265,7 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 return `
                     <tr>
-                        <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+                        <td><span class="badge ${badgeClass}" title="${titleAttr}" style="cursor: ${titleAttr ? 'help' : 'default'};">${badgeText}</span></td>
                         <td>
                             <strong style="color: var(--accent-cyan);">@${c.author || 'user'}</strong>
                             <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">${originalExcerpt}</div>

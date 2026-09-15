@@ -260,9 +260,15 @@ class BrowserController:
                 reply_box = self.page.query_selector('div[role="textbox"]')
 
             if not reply_box:
-                err_msg = "Could not find reply input box (Post replies may be restricted or page requires login)."
-                add_log("WARN", err_msg)
-                return {"success": False, "mode": "live", "message": err_msg}
+                page_text = self.page.inner_text("body").lower()
+                if "who can reply" in page_text or "can reply" in page_text or "replies are limited" in page_text:
+                    err_msg = "Skipped: Post author restricted replies (e.g. only accounts they follow or verified users can reply)."
+                    add_log("INFO", f"Tweet {tweet_id}: {err_msg}")
+                    return {"success": False, "mode": "live", "message": err_msg, "reason": "restricted"}
+
+                err_msg = "Could not find reply input box (Post replies restricted by author or thread closed)."
+                add_log("INFO", f"Tweet {tweet_id}: {err_msg}")
+                return {"success": False, "mode": "live", "message": err_msg, "reason": "restricted"}
 
             # Focus and simulate human typing
             reply_box.click()
