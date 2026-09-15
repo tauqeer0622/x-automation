@@ -14,10 +14,28 @@ class BrowserController:
         self.page: Optional[Page] = None
         self.is_running = False
 
+    def is_alive(self) -> bool:
+        """Verifies if the browser and page are still alive and responsive."""
+        if not self.is_running or not self.context or not self.page:
+            return False
+        try:
+            return not self.page.is_closed()
+        except Exception:
+            return False
+
+    def ensure_active(self, headless: Optional[bool] = None) -> bool:
+        """Ensures a live browser session is ready, auto-recovering if closed."""
+        if not self.is_alive():
+            self.stop()
+            return self.start(headless=headless)
+        return True
+
     def start(self, headless: Optional[bool] = None) -> bool:
         """Starts Playwright with persistent context to preserve login state."""
-        if self.is_running and self.context:
+        if self.is_alive():
             return True
+
+        self.stop()  # Clean any stale resources
 
         use_headless = config.headless if headless is None else headless
         data_dir = os.path.abspath(config.browser_data_dir)
@@ -25,7 +43,7 @@ class BrowserController:
 
         try:
             self._playwright = sync_playwright().start()
-            
+
             # Anti-detection browser launch arguments
             args = [
                 "--disable-blink-features=AutomationControlled",
@@ -68,43 +86,44 @@ class BrowserController:
             return False
 
     def stop(self):
-        """Closes browser and cleans up resources."""
+        """Closes browser and cleans up resources cleanly."""
         try:
             if self.context:
                 self.context.close()
+        except Exception:
+            pass
+
+        try:
             if self._playwright:
                 self._playwright.stop()
         except Exception:
             pass
-        finally:
-            self.context = None
-            self.page = None
-            self._playwright = None
-            self.is_running = False
-            add_log("INFO", "Browser controller stopped")
+
+        self.context = None
+        self.page = None
+        self._playwright = None
+        self.is_running = False
 
     def is_logged_in(self) -> bool:
         """Checks if the current session is logged into X."""
-        if not self.is_running or not self.page:
+        if not self.ensure_active():
             return False
         try:
             self.page.goto("https://x.com/home", timeout=25000, wait_until="domcontentloaded")
             time.sleep(2)
-            # Check for standard logged-in navigation items
             account_btn = self.page.query_selector('[data-testid="SideNav_AccountSwitcher_Button"], [data-testid="AppTabBar_Profile_Link"]')
             return account_btn is not None
         except Exception as e:
             add_log("WARN", f"Session check encountered: {str(e)}")
             return False
 
-    def search_tweets(self, query: str, max_results: int = 10) -> List[Dict[str, Any]]:
+    def search_tweets(self, query: str, max_results: int = 10, retry: bool = True) -> List[Dict[str, Any]]:
         """
         Searches X for the query (using 'Live' tab for latest tweets)
-        and extracts tweet elements.
+        and extracts tweet elements with auto-recovery.
         """
-        if not self.is_running or not self.page:
-            if not self.start():
-                return []
+        if not self.ensure_active():
+            return []
 
         results: List[Dict[str, Any]] = []
         encoded_query = urllib.parse.quote(f"{query} lang:en -is:retweet")
@@ -130,11 +149,11 @@ class BrowserController:
                     status_link = art.query_selector('a[href*="/status/"]')
                     if not status_link:
                         continue
-                    
+
                     href = status_link.get_attribute("href")
                     if not href or "/status/" not in href:
                         continue
-                    
+
                     tweet_id = href.split("/status/")[1].split("?")[0].split("/")[0]
                     tweet_url = f"https://x.com{href}" if href.startswith("/") else href
 
@@ -165,22 +184,29 @@ class BrowserController:
 
             add_log("INFO", f"Found {len(results)} tweets for query '{query}'")
             return results
+
         except Exception as e:
-            add_log("ERROR", f"Search failed for '{query}': {str(e)}")
+            err_str = str(e)
+            add_log("ERROR", f"Search failed for '{query}': {err_str}")
+            # If browser/page was closed, auto-restart and retry once
+            if retry and ("closed" in err_str.lower() or "crashed" in err_str.lower()):
+                add_log("WARN", "Browser was closed. Auto-recovering session...")
+                self.stop()
+                if self.start():
+                    return self.search_tweets(query, max_results=max_results, retry=False)
             return []
 
-    def post_reply(self, tweet_id: str, tweet_url: str, reply_text: str, dry_run: bool = True) -> Dict[str, Any]:
+    def post_reply(self, tweet_id: str, tweet_url: str, reply_text: str, dry_run: bool = True, retry: bool = True) -> Dict[str, Any]:
         """
-        Posts a reply to a tweet.
+        Posts a reply to a tweet with auto-recovery on browser disconnect.
         If dry_run is True, simulates the action without clicking the final submit button.
         """
         if dry_run:
             add_log("INFO", f"[DRY RUN] Would reply to {tweet_url}: \"{reply_text}\"")
             return {"success": True, "mode": "dry_run", "message": "Dry run simulated successfully"}
 
-        if not self.is_running or not self.page:
-            if not self.start():
-                return {"success": False, "mode": "live", "message": "Browser is not running"}
+        if not self.ensure_active():
+            return {"success": False, "mode": "live", "message": "Browser is not running and could not be started"}
 
         try:
             target_url = tweet_url if tweet_url else f"https://x.com/i/web/status/{tweet_id}"
@@ -189,10 +215,10 @@ class BrowserController:
             time.sleep(random.uniform(2.5, 4.0))
 
             # Look for reply input box on the tweet page
-            # 1. First try direct inline reply box: [data-testid="tweetTextarea_0"]
+            # 1. First try direct inline reply box
             reply_box = self.page.query_selector('[data-testid="tweetTextarea_0"]')
-            
-            # 2. If not visible, click the reply icon button to open modal
+
+            # 2. If not visible, click the reply icon button on the article
             if not reply_box:
                 reply_btn = self.page.query_selector('article button[data-testid="reply"]')
                 if reply_btn:
@@ -205,14 +231,14 @@ class BrowserController:
                 reply_box = self.page.query_selector('div[role="textbox"]')
 
             if not reply_box:
-                err_msg = "Could not find reply input box (May require login or post replies are restricted)."
+                err_msg = "Could not find reply input box (Post replies may be restricted or page requires login)."
                 add_log("WARN", err_msg)
                 return {"success": False, "mode": "live", "message": err_msg}
 
             # Focus and simulate human typing
             reply_box.click()
             time.sleep(random.uniform(0.5, 1.0))
-            
+
             # Type naturally with variable keystroke delay
             for char in reply_text:
                 self.page.keyboard.type(char)
@@ -235,14 +261,20 @@ class BrowserController:
 
             # Click submit
             submit_btn.click()
-            time.sleep(random.uniform(2.0, 3.5))
+            time.sleep(random.uniform(2.5, 4.0))
 
             add_log("SUCCESS", f"Live comment successfully posted to tweet {tweet_id}!")
             return {"success": True, "mode": "live", "message": "Reply published"}
 
         except Exception as e:
-            err_msg = f"Failed to post reply: {str(e)}"
-            add_log("ERROR", err_msg)
-            return {"success": False, "mode": "live", "message": err_msg}
+            err_msg = str(e)
+            add_log("ERROR", f"Failed to post reply: {err_msg}")
+            # If browser/page was closed, auto-recover and retry once
+            if retry and ("closed" in err_msg.lower() or "crashed" in err_msg.lower()):
+                add_log("WARN", "Browser disconnected during reply. Auto-recovering session...")
+                self.stop()
+                if self.start():
+                    return self.post_reply(tweet_id, tweet_url, reply_text, dry_run=dry_run, retry=False)
+            return {"success": False, "mode": "live", "message": f"Failed to post reply: {err_msg}"}
 
 browser_controller = BrowserController()
