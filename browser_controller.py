@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 from playwright.sync_api import sync_playwright, BrowserContext, Page
 from config import config
 from database import add_log
+from compliance_filter import is_government_affiliated
 
 class BrowserController:
     def __init__(self):
@@ -162,15 +163,26 @@ class BrowserController:
                     tweet_id = href.split("/status/")[1].split("?")[0].split("/")[0]
                     tweet_url = f"https://x.com{href}" if href.startswith("/") else href
 
-                    # Extract Author handle
+                    # Extract Author handle, display name & badges
                     author = "unknown"
+                    display_name = ""
+                    badge_label = ""
                     user_elem = art.query_selector('[data-testid="User-Name"]')
                     if user_elem:
                         user_text = user_elem.inner_text()
+                        display_name = user_text
                         for part in user_text.split():
                             if part.startswith("@"):
                                 author = part.replace("@", "")
                                 break
+                        badge_elem = user_elem.query_selector('svg[data-testid="icon-verified"], [aria-label*="Government"], [aria-label*="Official"], [aria-label*="State-affiliated"]')
+                        if badge_elem:
+                            badge_label = badge_elem.get_attribute("aria-label") or ""
+
+                    # COMPLIANCE FILTER: Ignore any government, regulator, or public official accounts
+                    if is_government_affiliated(handle=author, display_name=display_name, badge_label=badge_label, extra_text=art_text):
+                        add_log("INFO", f"Skipped tweet {tweet_id} by @{author}: Government-connected account.")
+                        continue
 
                     # Extract Tweet Text
                     text_elem = art.query_selector('[data-testid="tweetText"]')
@@ -218,6 +230,18 @@ class BrowserController:
             add_log("INFO", f"Navigating to tweet: {target_url}")
             self.page.goto(target_url, timeout=30000, wait_until="domcontentloaded")
             time.sleep(random.uniform(2.5, 4.0))
+
+            # Compliance check: Verify target tweet author is not government-affiliated
+            author_header = self.page.query_selector('[data-testid="User-Name"]')
+            if author_header:
+                hdr_text = author_header.inner_text()
+                hdr_badge = author_header.query_selector('svg[data-testid="icon-verified"], [aria-label*="Government"], [aria-label*="Official"], [aria-label*="State-affiliated"]')
+                badge_lbl = hdr_badge.get_attribute("aria-label") or "" if hdr_badge else ""
+                article_txt = self.page.inner_text("article") if self.page.query_selector("article") else ""
+                if is_government_affiliated(handle="", display_name=hdr_text, badge_label=badge_lbl, extra_text=article_txt[:400]):
+                    err_msg = "Aborted reply: Target author is government-affiliated or official."
+                    add_log("WARN", err_msg)
+                    return {"success": False, "mode": "live", "message": err_msg}
 
             # Look for reply input box on the tweet page
             # 1. First try direct inline reply box

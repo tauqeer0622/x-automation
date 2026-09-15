@@ -15,6 +15,7 @@ class AppConfig(BaseModel):
     # Keywords & Targeting
     target_keywords_raw: str = Field(default_factory=lambda: os.getenv("TARGET_KEYWORDS", "crypto, BTC, bitcoin, stocks, stock market, $BTC, $ETH, crypto trading"))
     negative_keywords_raw: str = Field(default_factory=lambda: os.getenv("NEGATIVE_KEYWORDS", "airdrop, giveaway, free coins, whatsapp, presale, claim free, 100x gem"))
+    government_keywords_raw: str = Field(default_factory=lambda: os.getenv("GOVERNMENT_KEYWORDS", "gov, govt, official, minister, ministry, parliament, senator, congress, whitehouse, treasury, secgov, sec_gov, cftc, federalreserve, centralbank, police, embassy, president, governor, mayor, diplomat, state-affiliated, regulator"))
 
     # AI Configuration
     openai_api_key: Optional[str] = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
@@ -45,6 +46,10 @@ class AppConfig(BaseModel):
     @property
     def negative_keywords(self) -> List[str]:
         return [k.strip().lower() for k in self.negative_keywords_raw.split(",") if k.strip()]
+
+    @property
+    def government_keywords(self) -> List[str]:
+        return [k.strip().lower() for k in self.government_keywords_raw.split(",") if k.strip()]
 
     def update_from_dict(self, data: dict):
         for key, value in data.items():

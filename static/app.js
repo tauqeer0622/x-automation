@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cfgOpenAIKey = document.getElementById('cfgOpenAIKey');
     const cfgTargetKeywords = document.getElementById('cfgTargetKeywords');
     const cfgNegativeKeywords = document.getElementById('cfgNegativeKeywords');
+    const cfgGovernmentKeywords = document.getElementById('cfgGovernmentKeywords');
     const cfgDryRun = document.getElementById('cfgDryRun');
     const cfgMinDelay = document.getElementById('cfgMinDelay');
     const cfgMaxDelay = document.getElementById('cfgMaxDelay');
@@ -138,6 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
             cfgCompanyUrl.value = cfg.company_url || '';
             cfgTargetKeywords.value = cfg.target_keywords || '';
             cfgNegativeKeywords.value = cfg.negative_keywords || '';
+            cfgGovernmentKeywords.value = cfg.government_keywords || '';
             cfgDryRun.checked = cfg.dry_run;
             cfgMinDelay.value = cfg.min_delay_seconds || 90;
             cfgMaxDelay.value = cfg.max_delay_seconds || 240;
@@ -161,6 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
             company_url: cfgCompanyUrl.value.trim(),
             target_keywords: cfgTargetKeywords.value.trim(),
             negative_keywords: cfgNegativeKeywords.value.trim(),
+            government_keywords: cfgGovernmentKeywords.value.trim(),
             dry_run: cfgDryRun.checked,
             min_delay_seconds: parseInt(cfgMinDelay.value, 10),
             max_delay_seconds: parseInt(cfgMaxDelay.value, 10),
