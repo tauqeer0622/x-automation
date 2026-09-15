@@ -5,7 +5,7 @@ import urllib.parse
 from typing import List, Dict, Any, Optional
 from playwright.sync_api import sync_playwright, BrowserContext, Page
 from config import config
-from database import add_log
+from database import add_log, is_user_restricted, add_restricted_user
 from compliance_filter import is_government_affiliated
 
 class BrowserController:
@@ -179,6 +179,16 @@ class BrowserController:
                         if badge_elem:
                             badge_label = badge_elem.get_attribute("aria-label") or ""
 
+                    # RESTRICTED USER FILTER: Check if user was previously flagged as having restricted replies
+                    if is_user_restricted(author):
+                        continue
+
+                    # PROTECTED ACCOUNT FILTER: Skip private/protected accounts (lock icon)
+                    lock_elem = art.query_selector('svg[data-testid="icon-lock"], [aria-label*="Protected"]')
+                    if lock_elem:
+                        add_restricted_user(author, reason="protected_account")
+                        continue
+
                     # COMPLIANCE FILTER: Ignore any government, regulator, or public official accounts
                     if is_government_affiliated(handle=author, display_name=display_name, badge_label=badge_label, extra_text=art_text):
                         add_log("INFO", f"Skipped tweet {tweet_id} by @{author}: Government-connected account.")
@@ -260,7 +270,22 @@ class BrowserController:
                 reply_box = self.page.query_selector('div[role="textbox"]')
 
             if not reply_box:
+                # Extract author from page and add to restricted list so future tweets are auto-skipped
+                author_hdr = self.page.query_selector('[data-testid="User-Name"]')
+                if author_hdr:
+                    for part in author_hdr.inner_text().split():
+                        if part.startswith("@"):
+                            flagged_user = part.replace("@", "")
+                            add_restricted_user(flagged_user, reason="replies_restricted")
+                            add_log("INFO", f"Added @{flagged_user} to restricted users list (author restricts replies).")
+                            break
+
                 page_text = self.page.inner_text("body").lower()
+                if "these posts are protected" in page_text or "only confirmed followers" in page_text:
+                    err_msg = "Skipped: Post or account is protected / private."
+                    add_log("INFO", f"Tweet {tweet_id}: {err_msg}")
+                    return {"success": False, "mode": "live", "message": err_msg, "reason": "restricted"}
+
                 if "who can reply" in page_text or "can reply" in page_text or "replies are limited" in page_text:
                     err_msg = "Skipped: Post author restricted replies (e.g. only accounts they follow or verified users can reply)."
                     add_log("INFO", f"Tweet {tweet_id}: {err_msg}")

@@ -5,7 +5,8 @@ from typing import Optional, Dict, Any
 from config import config
 from database import (
     is_tweet_processed, save_post, update_post_status,
-    save_comment, get_daily_comment_count, add_log
+    save_comment, get_daily_comment_count, add_log,
+    is_user_restricted
 )
 from comment_generator import generator
 from browser_controller import browser_controller
@@ -128,6 +129,11 @@ class AutomationEngine:
                             if is_government_affiliated(handle=author, extra_text=content):
                                 save_post(tweet_id, author, content, keyword, url, status="ignored_govt")
                                 add_log("INFO", f"Skipped tweet {tweet_id} by @{author}: Government account filter.")
+                                continue
+
+                            # Check restricted / locked reply user blacklist
+                            if is_user_restricted(author):
+                                save_post(tweet_id, author, content, keyword, url, status="ignored_restricted")
                                 continue
 
                             # Record discovered post

@@ -54,6 +54,15 @@ def init_db():
         )
     """)
 
+    # Restricted users table (authors who disable replies or protect accounts)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS restricted_users (
+            author TEXT PRIMARY KEY,
+            reason TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -61,6 +70,30 @@ def is_tweet_processed(tweet_id: str) -> bool:
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT 1 FROM posts WHERE tweet_id = ?", (tweet_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row is not None
+
+def add_restricted_user(author: str, reason: str = "replies_restricted"):
+    clean = (author or "").strip().lower().replace("@", "")
+    if not clean or clean == "unknown":
+        return
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT OR REPLACE INTO restricted_users (author, reason, created_at)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+    """, (clean, reason))
+    conn.commit()
+    conn.close()
+
+def is_user_restricted(author: str) -> bool:
+    clean = (author or "").strip().lower().replace("@", "")
+    if not clean:
+        return False
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1 FROM restricted_users WHERE author = ?", (clean,))
     row = cursor.fetchone()
     conn.close()
     return row is not None
