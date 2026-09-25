@@ -1,5 +1,5 @@
 import os
-import random
+from datetime import datetime, date
 from typing import Optional, List, Dict, Any
 from config import config
 from database import add_log
@@ -36,19 +36,15 @@ def list_available_media() -> List[Dict[str, Any]]:
         add_log("WARN", f"Failed to list media files: {str(e)}")
     return results
 
-def get_media_image_to_post(explicit_path: Optional[str] = None) -> Optional[str]:
+def get_daily_image_info(explicit_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """
-    Resolves the image file to attach alongside a tweet reply.
-    Returns the absolute path to an image file, or None if disabled or no images found.
+    Returns metadata about the active single daily image for today.
+    Every comment on a given day shares this same image.
     """
-    if not config.attach_image:
-        return None
-
     target = explicit_path or config.media_image_path
     if not target:
         return None
 
-    # Resolve relative path
     if not os.path.isabs(target):
         target = os.path.join(WORKSPACE_DIR, target)
 
@@ -56,19 +52,62 @@ def get_media_image_to_post(explicit_path: Optional[str] = None) -> Optional[str
     if os.path.isfile(target):
         ext = os.path.splitext(target)[1].lower()
         if ext in SUPPORTED_IMAGE_EXTS:
-            return os.path.abspath(target)
+            return {
+                "filename": os.path.basename(target),
+                "path": os.path.abspath(target),
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "reason": "explicit_file"
+            }
 
-    # 2. Directory of images: pick an image from the folder
+    # 2. Directory: select today's single daily image
     if os.path.isdir(target):
         images = [
-            os.path.join(target, f)
-            for f in os.listdir(target)
+            f for f in sorted(os.listdir(target))
             if os.path.splitext(f)[1].lower() in SUPPORTED_IMAGE_EXTS
             and os.path.isfile(os.path.join(target, f))
         ]
-        if images:
-            selected = random.choice(images)
-            return os.path.abspath(selected)
+        if not images:
+            return None
 
-    add_log("WARN", f"Image attachment is enabled, but no valid image was found at '{target}'")
+        today_str = datetime.now().strftime("%Y-%m-%d")
+
+        # Check if an image is specifically named with today's date (e.g. 2026-09-25.jpg or today.png)
+        for img in images:
+            name_no_ext = os.path.splitext(img)[0].lower()
+            if name_no_ext == today_str or name_no_ext == "today" or name_no_ext == "daily":
+                return {
+                    "filename": img,
+                    "path": os.path.abspath(os.path.join(target, img)),
+                    "date": today_str,
+                    "reason": "date_match"
+                }
+
+        # Otherwise, deterministically select 1 image for today using calendar day
+        # Guarantees that ALL comments throughout the day share this exact image!
+        day_index = date.today().toordinal() % len(images)
+        selected_file = images[day_index]
+        return {
+            "filename": selected_file,
+            "path": os.path.abspath(os.path.join(target, selected_file)),
+            "date": today_str,
+            "day_index": day_index,
+            "total_images": len(images),
+            "reason": "daily_rotation"
+        }
+
+    return None
+
+def get_media_image_to_post(explicit_path: Optional[str] = None) -> Optional[str]:
+    """
+    Resolves the single daily image file to attach alongside all tweet replies for today.
+    Guarantees that 1 consistent image is used for all comments on any given day.
+    """
+    if not config.attach_image:
+        return None
+
+    info = get_daily_image_info(explicit_path)
+    if info and "path" in info:
+        return info["path"]
+
+    add_log("WARN", "Image attachment is enabled, but no valid daily image was found.")
     return None

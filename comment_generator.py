@@ -54,18 +54,19 @@ Strict Requirements:
 1. Length: MAXIMUM 230 characters (Strict limit!).
 2. Be human, conversational, and direct. Validate or add an insightful perspective to their point.
 3. Language: Strictly match the language and writing system of the tweet. If the post is in Spanish, reply in fluent Spanish; if in Japanese, reply in natural Japanese; if in Arabic, Hindi, French, German, Portuguese, etc., reply in that exact language. NEVER reply in English to a non-English post.
-4. Connect naturally to {config.company_name} without being pushy or spammy.
-5. Do NOT use hashtags like #ad, #sponsored, or multiple hashtags.
-6. Never repeat the exact prompt wording. Output ONLY the reply text."""
+4. High Uniqueness & Variety: Every reply must vary substantially from one to another. Use different phrasing, varied angles, and diverse vocabulary. Never produce repetitive or template-sounding text.
+5. Connect naturally to {config.company_name} without being pushy or spammy.
+6. Do NOT use hashtags like #ad, #sponsored, or multiple hashtags.
+7. Never repeat the exact prompt wording. Output ONLY the reply text."""
 
         response = client.chat.completions.create(
             model=config.openai_model,
             messages=[
-                {"role": "system", "content": "You are a concise, insightful financial & tech commentator on X. You are fluent in all world languages and always reply in the exact language of the original tweet."},
+                {"role": "system", "content": "You are a concise, insightful financial & tech commentator on X. You are fluent in all world languages, produce highly varied and distinct comments for every tweet, and always reply in the exact language of the original tweet."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=90,
-            temperature=0.7
+            temperature=0.85
         )
 
         comment = response.choices[0].message.content.strip()

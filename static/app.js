@@ -208,7 +208,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const count = (data.media || []).length;
                 if (mediaCount) {
                     if (count === 0) {
-                        mediaCount.textContent = 'None found in folder';
+                        mediaCount.textContent = 'No images found in folder';
+                    } else if (data.today_image && data.today_image.filename) {
+                        mediaCount.textContent = `${data.today_image.filename} (Active for today | ${count} image${count === 1 ? '' : 's'} in pool)`;
                     } else {
                         const names = data.media.map(m => m.filename).join(', ');
                         mediaCount.textContent = `${count} image${count === 1 ? '' : 's'} (${names})`;

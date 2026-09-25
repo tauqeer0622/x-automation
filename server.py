@@ -13,7 +13,7 @@ from database import (
 from engine import engine
 from comment_generator import generator
 from browser_controller import browser_controller
-from media_manager import list_available_media, get_media_dir
+from media_manager import list_available_media, get_media_dir, get_daily_image_info
 
 app = FastAPI(title="X Automation Dashboard")
 
@@ -153,6 +153,7 @@ def get_media_list():
     return {
         "media": list_available_media(),
         "media_dir": get_media_dir(),
+        "today_image": get_daily_image_info(),
         "attach_image": config.attach_image,
         "media_image_path": config.media_image_path
     }
