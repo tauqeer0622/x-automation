@@ -50,18 +50,18 @@ def test_database_operations():
 def test_comment_generation():
     # Test Bitcoin / BTC
     btc_reply = generator.generate("Bitcoin is holding steady above 95,000", "trader_dan", "BTC")
-    assert len(btc_reply) <= 280
-    assert config.company_name in btc_reply
-    
+    assert len(btc_reply) <= 120
+    assert "market news" in btc_reply.lower()
+
     # Test Stocks
     stock_reply = generator.generate("S&P 500 reached all time highs today after CPI numbers", "market_watch", "stocks")
-    assert len(stock_reply) <= 280
-    assert config.company_name in stock_reply
+    assert len(stock_reply) <= 120
+    assert "market news" in stock_reply.lower()
 
     # Test General Crypto
     crypto_reply = generator.generate("Ethereum and layer 2 ecosystems are booming", "defi_guru", "crypto")
-    assert len(crypto_reply) <= 280
-    assert config.company_name in crypto_reply
+    assert len(crypto_reply) <= 120
+    assert "market news" in crypto_reply.lower()
 
 def test_api_endpoints():
     # Status endpoint

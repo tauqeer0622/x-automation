@@ -40,125 +40,55 @@ class CommentGenerator:
         from openai import OpenAI
         client = OpenAI(api_key=config.openai_api_key)
 
-        prompt = f"""You are a community engagement expert representing {config.company_name}.
-Company details: {config.company_one_liner}
-Call-to-action / Website: {config.company_cta} ({config.company_url})
+        prompt = f"""You are writing a very brief reply to a post on X.
+An image containing today's market news is attached alongside your reply.
 
 Tweet by @{author}:
 "{text}"
 
 Task:
-Write a thoughtful, authentic reply to this post about {keyword or 'the markets'}.
+Write a VERY BRIEF reply directing the author to have a look at today's market news shown in the attached image.
 
 Strict Requirements:
-1. Length: MAXIMUM 230 characters (Strict limit!).
-2. Be human, conversational, and direct. Validate or add an insightful perspective to their point.
-3. Language: Strictly match the language and writing system of the tweet. If the post is in Spanish, reply in fluent Spanish; if in Japanese, reply in natural Japanese; if in Arabic, Hindi, French, German, Portuguese, etc., reply in that exact language. NEVER reply in English to a non-English post.
-4. High Uniqueness & Variety: Every reply must vary substantially from one to another. Use different phrasing, varied angles, and diverse vocabulary. Never produce repetitive or template-sounding text.
-5. Connect naturally to {config.company_name} without being pushy or spammy.
-6. Do NOT use hashtags like #ad, #sponsored, or multiple hashtags.
-7. Never repeat the exact prompt wording. Output ONLY the reply text."""
+1. Length: VERY BRIEF (5 to 14 words maximum / under 90 characters).
+2. Core Message: Direct them to "have a look at today's market news" shown in the attached image.
+3. Natural Variations: Vary the wording across tweets so replies feel natural and not copy-pasted (e.g., "Have a look at today's market news.", "Take a look at today's market news!", "Check out today's market news breakdown.", "Here's today's market news, have a look.", "Have a look at today's top market updates.").
+4. Language: Always write the reply in the SAME LANGUAGE as the tweet (e.g., if the tweet is in Spanish, write in Spanish like "Echa un vistazo a las noticias del mercado de hoy."; if in Japanese, in Japanese like "今日の市場ニュースをぜひご覧ください。"; if English, in English).
+5. Do NOT include hashtags, URLs, or promotional boilerplate. Output ONLY the brief reply text."""
 
         response = client.chat.completions.create(
             model=config.openai_model,
             messages=[
-                {"role": "system", "content": "You are a concise, insightful financial & tech commentator on X. You are fluent in all world languages, produce highly varied and distinct comments for every tweet, and always reply in the exact language of the original tweet."},
+                {"role": "system", "content": "You write very brief, natural 1-sentence comments on X directing users to look at today's market news in the attached image, in the exact language of their tweet."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=90,
+            max_tokens=40,
             temperature=0.85
         )
 
         comment = response.choices[0].message.content.strip()
-        # Clean quotes if model wrapped output
         comment = comment.strip('"\'')
-        if len(comment) > 260:
-            comment = comment[:257] + "..."
+        if len(comment) > 130:
+            comment = comment[:127] + "..."
         return comment
 
     def _generate_with_template(self, text: str, author: str, keyword: str) -> str:
-        text_lower = text.lower()
-
-        # Categorize tweet topic
-        is_btc = any(k in text_lower for k in ["btc", "bitcoin", "$btc"])
-        is_crypto = any(k in text_lower for k in ["crypto", "eth", "ethereum", "sol", "altcoin", "defi", "web3"])
-        is_stocks = any(k in text_lower for k in ["stock", "shares", "spy", "nasdaq", "earnings", "fed", "dividend", "nyse"])
-
-        if is_btc:
-            hooks = [
-                "BTC volatility keeping everyone on their toes.",
-                "Bitcoin's price action right now is definitely one to watch.",
-                "Crucial levels being tested on BTC here.",
-                "Solid perspective on Bitcoin.",
-                "Patience is key with BTC cycles like this."
-            ]
-            insights = [
-                f"Tracking real-time on-chain flows makes these swings much clearer.",
-                f"Having sharp risk management in place is what separates wins from losses.",
-                f"Data-driven signals help cut through the market noise right now.",
-                f"Managing downside risk here is everything."
-            ]
-        elif is_stocks:
-            hooks = [
-                "Spot on observation about the stock market.",
-                "Equities are reacting strongly to macro sentiment right now.",
-                "Big moves happening across equities today.",
-                "Interesting setup on this chart."
-            ]
-            insights = [
-                f"Automated backtesting and volume analysis give such an edge in this market.",
-                f"Watching institutional order flow closely gives the real picture here.",
-                f"Staying disciplined with systematic trade rules pays off in these conditions."
-            ]
-        else: # General crypto or trading
-            hooks = [
-                "Great take on this market setup.",
-                "Navigating these market conditions definitely requires precision.",
-                "The shift in sentiment over the last few days has been noticeable.",
-                "Interesting discussion on where the market heads next."
-            ]
-            insights = [
-                f"Having automated analytics to filter the noise makes a massive difference.",
-                f"Solid signals and speed are game-changers in fast-moving conditions.",
-                f"Data-backed tools make spotting genuine trends much easier."
-            ]
-
-        # Company plugs / callouts
-        plugs = [
-            f"That's exactly what we focus on building at {config.company_name}.",
-            f"We've been tracking this exact data flow at {config.company_name}.",
-            f"Building tools to make this analysis effortless at {config.company_name}.",
-            f"This is why we built {config.company_name} to simplify execution."
+        variations = [
+            "Have a look at today's market news.",
+            "Take a look at today's market news.",
+            "Check out today's market news.",
+            "Here's today's market news, have a look!",
+            "Have a look at today's market news updates.",
+            "Take a look at the latest market news for today.",
+            "Here is a quick look at today's market news.",
+            "Today's market news is out, have a look!",
+            "Make sure to have a look at today's market news.",
+            "Quick update: have a look at today's market news.",
+            "Check out the breakdown in today's market news.",
+            "Here's today's market news recap, take a look!",
+            "A quick look at today's market news, check it out.",
+            "Have a look at what's moving in today's market news."
         ]
-
-        # CTAs
-        ctas = [
-            f"{config.company_cta}",
-            f"Feel free to check our profile for insights!",
-            f"Always keen to share insights if you're interested!",
-            f"More details on our profile if you're curious!"
-        ]
-
-        hook = random.choice(hooks)
-        insight = random.choice(insights)
-        plug = random.choice(plugs)
-        cta = random.choice(ctas)
-
-        # Build candidate comments with variation
-        templates = [
-            f"{hook} {insight} {plug} {cta}",
-            f"{hook} {insight} We explore this regularly at {config.company_name}. {cta}",
-            f"{insight} {plug} {cta}"
-        ]
-
-        comment = random.choice(templates)
-
-        # Ensure fits within Twitter length buffer (max 260 chars)
-        if len(comment) > 260:
-            comment = f"{hook} {plug} {cta}"
-            if len(comment) > 260:
-                comment = f"{hook} That's our focus at {config.company_name}. {cta}"
-
-        return comment
+        return random.choice(variations)
 
 generator = CommentGenerator()
