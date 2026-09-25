@@ -93,3 +93,19 @@ def test_api_endpoints():
     assert config.company_name == "ApexTradingPro"
     assert config.daily_comment_limit == 30
 
+def test_media_attachment():
+    from media_manager import get_media_image_to_post, list_available_media
+    media = list_available_media()
+    assert len(media) >= 1
+    assert any("market_analytics.jpg" in m["filename"] for m in media)
+
+    img = get_media_image_to_post()
+    assert img is not None
+    assert os.path.exists(img)
+
+    res = client.get("/api/media")
+    assert res.status_code == 200
+    data = res.json()
+    assert "media" in data
+    assert len(data["media"]) >= 1
+

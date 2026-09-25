@@ -10,6 +10,7 @@ from database import (
 )
 from comment_generator import generator
 from browser_controller import browser_controller
+from media_manager import get_media_image_to_post
 
 class AutomationEngine:
     def __init__(self):
@@ -137,12 +138,14 @@ class AutomationEngine:
                             self.current_activity = f"Generating contextual reply for @{author}..."
                             reply_text = generator.generate(content, author, keyword)
 
-                            # Post or dry-run reply
+                            # Post or dry-run reply (with optional attached image)
+                            image_path = get_media_image_to_post()
                             self.current_activity = f"Replying to @{author} ({'DRY RUN' if config.dry_run else 'LIVE'})..."
                             result = browser_controller.post_reply(
                                 tweet_id=tweet_id,
                                 tweet_url=url,
                                 reply_text=reply_text,
+                                image_path=image_path,
                                 dry_run=config.dry_run
                             )
 

@@ -51,6 +51,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const cfgMinDelay = document.getElementById('cfgMinDelay');
     const cfgMaxDelay = document.getElementById('cfgMaxDelay');
     const cfgDailyLimit = document.getElementById('cfgDailyLimit');
+    const cfgAttachImage = document.getElementById('cfgAttachImage');
+    const cfgMediaImagePath = document.getElementById('cfgMediaImagePath');
+    const btnUploadMediaTrigger = document.getElementById('btnUploadMediaTrigger');
+    const mediaFileInput = document.getElementById('mediaFileInput');
+    const mediaCount = document.getElementById('mediaCount');
 
     // Console
     const consoleOutput = document.getElementById('consoleOutput');
@@ -142,6 +147,9 @@ document.addEventListener('DOMContentLoaded', () => {
             cfgMinDelay.value = cfg.min_delay_seconds || 90;
             cfgMaxDelay.value = cfg.max_delay_seconds || 240;
             cfgDailyLimit.value = cfg.daily_comment_limit || 25;
+            if (cfgAttachImage) cfgAttachImage.checked = !!cfg.attach_image;
+            if (cfgMediaImagePath) cfgMediaImagePath.value = cfg.media_image_path || './media';
+            fetchMediaList();
 
             if (cfg.has_openai_key) {
                 cfgOpenAIKey.placeholder = '•••••••••••••••• (API Key Active)';
@@ -164,7 +172,9 @@ document.addEventListener('DOMContentLoaded', () => {
             dry_run: cfgDryRun.checked,
             min_delay_seconds: parseInt(cfgMinDelay.value, 10),
             max_delay_seconds: parseInt(cfgMaxDelay.value, 10),
-            daily_comment_limit: parseInt(cfgDailyLimit.value, 10)
+            daily_comment_limit: parseInt(cfgDailyLimit.value, 10),
+            attach_image: cfgAttachImage.checked,
+            media_image_path: cfgMediaImagePath.value.trim() || './media'
         };
 
         if (cfgOpenAIKey.value.trim()) {
@@ -181,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.ok) {
                 showToast('Settings successfully updated!');
                 fetchStatus();
+                fetchMediaList();
             } else {
                 showToast('Error saving settings.');
             }
@@ -188,6 +199,51 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Network error while saving settings.');
         }
     });
+
+    async function fetchMediaList() {
+        try {
+            const res = await fetch('/api/media');
+            if (res.ok) {
+                const data = await res.json();
+                const count = (data.media || []).length;
+                if (mediaCount) {
+                    if (count === 0) {
+                        mediaCount.textContent = 'None found in folder';
+                    } else {
+                        const names = data.media.map(m => m.filename).join(', ');
+                        mediaCount.textContent = `${count} image${count === 1 ? '' : 's'} (${names})`;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to fetch media list', e);
+        }
+    }
+
+    if (btnUploadMediaTrigger && mediaFileInput) {
+        btnUploadMediaTrigger.addEventListener('click', () => mediaFileInput.click());
+        mediaFileInput.addEventListener('change', async () => {
+            if (!mediaFileInput.files || mediaFileInput.files.length === 0) return;
+            const file = mediaFileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            try {
+                showToast(`Uploading ${file.name}...`);
+                const res = await fetch('/api/media/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (res.ok) {
+                    showToast(`Image uploaded: ${file.name}`);
+                    fetchMediaList();
+                } else {
+                    showToast('Failed to upload image.');
+                }
+            } catch (e) {
+                showToast('Upload error.');
+            }
+        });
+    }
 
     // Start / Stop Automation Controls
     btnStart.addEventListener('click', async () => {

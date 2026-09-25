@@ -218,14 +218,24 @@ class BrowserController:
                     return self.search_tweets(query, max_results=max_results, retry=False)
             return []
 
-    def post_reply(self, tweet_id: str, tweet_url: str, reply_text: str, dry_run: bool = True, retry: bool = True) -> Dict[str, Any]:
+    def post_reply(
+        self,
+        tweet_id: str,
+        tweet_url: str,
+        reply_text: str,
+        image_path: Optional[str] = None,
+        dry_run: bool = True,
+        retry: bool = True
+    ) -> Dict[str, Any]:
         """
         Posts a reply to a tweet with auto-recovery on browser disconnect.
+        Optionally attaches an image file alongside the reply text.
         If dry_run is True, simulates the action without clicking the final submit button.
         """
         if dry_run:
-            add_log("INFO", f"[DRY RUN] Would reply to {tweet_url}: \"{reply_text}\"")
-            return {"success": True, "mode": "dry_run", "message": "Dry run simulated successfully"}
+            img_info = f" + [Image: {os.path.basename(image_path)}]" if image_path else ""
+            add_log("INFO", f"[DRY RUN] Would reply to {tweet_url}: \"{reply_text}\"{img_info}")
+            return {"success": True, "mode": "dry_run", "message": "Dry run simulated successfully", "image_attached": bool(image_path)}
 
         if not self.ensure_active():
             return {"success": False, "mode": "live", "message": "Browser is not running and could not be started"}
@@ -235,7 +245,6 @@ class BrowserController:
             add_log("INFO", f"Navigating to tweet: {target_url}")
             self.page.goto(target_url, timeout=30000, wait_until="domcontentloaded")
             time.sleep(random.uniform(2.5, 4.0))
-
 
             # Look for reply input box on the tweet page
             # 1. First try direct inline reply box
@@ -288,12 +297,41 @@ class BrowserController:
                 self.page.keyboard.type(char)
                 time.sleep(random.uniform(0.02, 0.08))
 
-            time.sleep(random.uniform(1.5, 2.5))
+            time.sleep(random.uniform(1.0, 2.0))
+
+            # If an image is provided, attach it to the reply
+            image_attached = False
+            if image_path and os.path.exists(image_path):
+                try:
+                    add_log("INFO", f"Attaching image to reply: {os.path.basename(image_path)}")
+                    # Find X's media file upload input (hidden input[type='file'])
+                    file_input = self.page.query_selector('input[data-testid="fileInput"], input[type="file"]')
+                    if file_input:
+                        file_input.set_input_files(os.path.abspath(image_path))
+                        # Give X time to process and render the image preview
+                        time.sleep(random.uniform(2.5, 4.0))
+                        try:
+                            self.page.wait_for_selector(
+                                '[data-testid="attachments"], [data-testid="removeMedia"], button[aria-label*="Remove"]',
+                                timeout=8000
+                            )
+                            image_attached = True
+                            add_log("INFO", f"Image attached successfully ({os.path.basename(image_path)}).")
+                        except Exception:
+                            # Proceed even if specific preview selector didn't pop
+                            image_attached = True
+                            add_log("INFO", f"Image file set on composer ({os.path.basename(image_path)}).")
+                    else:
+                        add_log("WARN", "Could not locate file input to attach image on page.")
+                except Exception as img_err:
+                    add_log("WARN", f"Failed to attach image ({str(img_err)}). Continuing with text reply.")
+
+            time.sleep(random.uniform(1.2, 2.0))
 
             # Find Post / Reply button
             submit_btn = self.page.query_selector('[data-testid="tweetButtonInline"], [data-testid="tweetButton"]')
             if not submit_btn:
-                err_msg = "Reply text entered but could not locate submit button."
+                err_msg = "Reply content entered but could not locate submit button."
                 add_log("ERROR", err_msg)
                 return {"success": False, "mode": "live", "message": err_msg}
 
@@ -307,8 +345,9 @@ class BrowserController:
             submit_btn.click()
             time.sleep(random.uniform(2.5, 4.0))
 
-            add_log("SUCCESS", f"Live comment successfully posted to tweet {tweet_id}!")
-            return {"success": True, "mode": "live", "message": "Reply published"}
+            img_status = f" + image [{os.path.basename(image_path)}]" if (image_path and image_attached) else ""
+            add_log("SUCCESS", f"Live comment successfully posted to tweet {tweet_id}{img_status}!")
+            return {"success": True, "mode": "live", "message": "Reply published", "image_attached": image_attached}
 
         except Exception as e:
             err_msg = str(e)
@@ -318,7 +357,7 @@ class BrowserController:
                 add_log("WARN", "Browser disconnected during reply. Auto-recovering session...")
                 self.stop()
                 if self.start():
-                    return self.post_reply(tweet_id, tweet_url, reply_text, dry_run=dry_run, retry=False)
+                    return self.post_reply(tweet_id, tweet_url, reply_text, image_path=image_path, dry_run=dry_run, retry=False)
             return {"success": False, "mode": "live", "message": f"Failed to post reply: {err_msg}"}
 
 browser_controller = BrowserController()

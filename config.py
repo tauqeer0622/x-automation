@@ -16,6 +16,10 @@ class AppConfig(BaseModel):
     target_keywords_raw: str = Field(default_factory=lambda: os.getenv("TARGET_KEYWORDS", "crypto, BTC, bitcoin, stocks, stock market, $BTC, $ETH, crypto trading"))
     negative_keywords_raw: str = Field(default_factory=lambda: os.getenv("NEGATIVE_KEYWORDS", "airdrop, giveaway, free coins, whatsapp, presale, claim free, 100x gem"))
 
+    # Media & Image Attachment
+    attach_image: bool = Field(default_factory=lambda: os.getenv("ATTACH_IMAGE", "true").lower() in ("true", "1", "yes"))
+    media_image_path: str = Field(default_factory=lambda: os.getenv("MEDIA_IMAGE_PATH", "./media"))
+
     # AI Configuration
     openai_api_key: Optional[str] = Field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
     openai_model: str = Field(default_factory=lambda: os.getenv("OPENAI_MODEL", "gpt-4o-mini"))

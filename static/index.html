@@ -299,6 +299,27 @@
                                 <input type="number" id="cfgDailyLimit" class="form-control" min="5" max="100">
                                 <small class="hint">Maximum replies per 24 hours to prevent account spam flags.</small>
                             </div>
+
+                            <h3 class="settings-group-title" style="margin-top: 24px;">Media & Image Attachment</h3>
+                            <div class="form-group toggle-group">
+                                <label class="toggle-label">
+                                    <span class="toggle-title">Attach Image to Comments</span>
+                                    <span class="toggle-desc">Automatically upload and post a chart/infographic image alongside every reply.</span>
+                                </label>
+                                <input type="checkbox" id="cfgAttachImage" class="toggle-input">
+                            </div>
+                            <div class="form-group">
+                                <label>Media Folder / Image Path</label>
+                                <div style="display: flex; gap: 8px;">
+                                    <input type="text" id="cfgMediaImagePath" class="form-control" placeholder="./media" style="flex: 1;">
+                                    <button type="button" class="btn btn-sm btn-secondary" id="btnUploadMediaTrigger" style="white-space: nowrap;">Upload Image</button>
+                                    <input type="file" id="mediaFileInput" accept="image/*" style="display: none;">
+                                </div>
+                                <small class="hint">Folder of images (auto-selects from pool) or specific file path.</small>
+                            </div>
+                            <div id="mediaStatusInfo" style="margin-top: 8px; font-size: 0.85rem; color: var(--text-muted);">
+                                <span>Active Images in Pool: <strong id="mediaCount" style="color: var(--accent);">Loading...</strong></span>
+                            </div>
                         </div>
                     </form>
                 </div>

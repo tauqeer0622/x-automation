@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
@@ -13,6 +13,7 @@ from database import (
 from engine import engine
 from comment_generator import generator
 from browser_controller import browser_controller
+from media_manager import list_available_media, get_media_dir
 
 app = FastAPI(title="X Automation Dashboard")
 
@@ -20,6 +21,10 @@ app = FastAPI(title="X Automation Dashboard")
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(STATIC_DIR, exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+MEDIA_DIR = os.path.join(os.path.dirname(__file__), "media")
+os.makedirs(MEDIA_DIR, exist_ok=True)
+app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 
 @app.on_event("startup")
 def on_startup():
@@ -57,6 +62,8 @@ def get_system_status():
             "min_delay_seconds": config.min_delay_seconds,
             "max_delay_seconds": config.max_delay_seconds,
             "daily_comment_limit": config.daily_comment_limit,
+            "attach_image": config.attach_image,
+            "media_image_path": config.media_image_path,
             "has_openai_key": bool(config.openai_api_key and config.openai_api_key.strip()),
             "headless": config.headless
         }
@@ -110,6 +117,8 @@ class ConfigUpdateRequest(BaseModel):
     min_delay_seconds: Optional[int] = None
     max_delay_seconds: Optional[int] = None
     daily_comment_limit: Optional[int] = None
+    attach_image: Optional[bool] = None
+    media_image_path: Optional[str] = None
     openai_api_key: Optional[str] = None
     headless: Optional[bool] = None
 
@@ -138,6 +147,26 @@ def get_posts():
 @app.get("/api/comments")
 def get_comments():
     return {"comments": get_recent_comments(60)}
+
+@app.get("/api/media")
+def get_media_list():
+    return {
+        "media": list_available_media(),
+        "media_dir": get_media_dir(),
+        "attach_image": config.attach_image,
+        "media_image_path": config.media_image_path
+    }
+
+@app.post("/api/media/upload")
+async def upload_media_file(file: UploadFile = File(...)):
+    media_dir = get_media_dir()
+    os.makedirs(media_dir, exist_ok=True)
+    file_path = os.path.join(media_dir, file.filename)
+    with open(file_path, "wb") as f:
+        content = await file.read()
+        f.write(content)
+    add_log("INFO", f"Uploaded new media image: {file.filename}")
+    return {"status": "success", "filename": file.filename, "path": file_path}
 
 @app.get("/api/logs")
 def get_logs():
