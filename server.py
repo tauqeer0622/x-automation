@@ -53,7 +53,6 @@ def get_system_status():
             "company_url": config.company_url,
             "target_keywords": config.target_keywords_raw,
             "negative_keywords": config.negative_keywords_raw,
-            "government_keywords": config.government_keywords_raw,
             "dry_run": config.dry_run,
             "min_delay_seconds": config.min_delay_seconds,
             "max_delay_seconds": config.max_delay_seconds,
@@ -107,7 +106,6 @@ class ConfigUpdateRequest(BaseModel):
     company_url: Optional[str] = None
     target_keywords: Optional[str] = None
     negative_keywords: Optional[str] = None
-    government_keywords: Optional[str] = None
     dry_run: Optional[bool] = None
     min_delay_seconds: Optional[int] = None
     max_delay_seconds: Optional[int] = None
@@ -123,7 +121,6 @@ def update_config(data: ConfigUpdateRequest):
     field_map = {
         "target_keywords": "target_keywords_raw",
         "negative_keywords": "negative_keywords_raw",
-        "government_keywords": "government_keywords_raw",
     }
     
     for key, val in updates.items():

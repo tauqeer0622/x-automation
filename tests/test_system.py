@@ -93,30 +93,3 @@ def test_api_endpoints():
     assert config.company_name == "ApexTradingPro"
     assert config.daily_comment_limit == 30
 
-def test_government_compliance_filter():
-    from compliance_filter import is_government_affiliated
-
-    # Should detect known government handles
-    assert is_government_affiliated("secgov") is True
-    assert is_government_affiliated("whitehouse") is True
-    assert is_government_affiliated("federalreserve") is True
-    assert is_government_affiliated("cftc") is True
-
-    # Should detect .gov or gov_ patterns
-    assert is_government_affiliated("state_dept_gov") is True
-    assert is_government_affiliated("energy.gov") is True
-
-    # Should detect official political / regulatory titles in display name
-    assert is_government_affiliated("john_doe", display_name="Senator John Doe") is True
-    assert is_government_affiliated("jane_smith", display_name="Ministry of Economy") is True
-    assert is_government_affiliated("alex_w", display_name="Governor of California") is True
-    assert is_government_affiliated("bank_officer", display_name="Central Bank of Ireland") is True
-
-    # Should detect X's official government badge labels
-    assert is_government_affiliated("custom_acct", badge_label="United States government official") is True
-    assert is_government_affiliated("news_outlet", badge_label="State-affiliated media") is True
-
-    # Should NOT flag regular traders or companies
-    assert is_government_affiliated("crypto_whale", display_name="Bitcoin HODLer") is False
-    assert is_government_affiliated("tech_trader", display_name="Daily Stock Signals") is False
-    assert is_government_affiliated("brightaxis2", display_name="BR Axis") is False

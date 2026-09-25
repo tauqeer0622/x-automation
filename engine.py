@@ -10,7 +10,6 @@ from database import (
 )
 from comment_generator import generator
 from browser_controller import browser_controller
-from compliance_filter import is_government_affiliated
 
 class AutomationEngine:
     def __init__(self):
@@ -125,11 +124,6 @@ class AutomationEngine:
                                 add_log("INFO", f"Skipped tweet {tweet_id} (matched negative filter)")
                                 continue
 
-                            # Check government affiliation
-                            if is_government_affiliated(handle=author, extra_text=content):
-                                save_post(tweet_id, author, content, keyword, url, status="ignored_govt")
-                                add_log("INFO", f"Skipped tweet {tweet_id} by @{author}: Government account filter.")
-                                continue
 
                             # Check restricted / locked reply user blacklist
                             if is_user_restricted(author):
