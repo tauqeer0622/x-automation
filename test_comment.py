@@ -60,10 +60,16 @@ def main():
     # Start browser visible so user can see it happen
     browser_controller.start(headless=False)
     
+    from media_manager import get_media_image_to_post
+    image_path = get_media_image_to_post()
+    if image_path:
+        print(f"[*] Attaching Daily Image: {image_path}")
+
     result = browser_controller.post_reply(
         tweet_id=tweet_id,
         tweet_url=url,
         reply_text=reply,
+        image_path=image_path,
         dry_run=is_dry_run
     )
 
