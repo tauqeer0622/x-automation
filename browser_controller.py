@@ -52,21 +52,23 @@ class BrowserController:
                 "--start-maximized"
             ]
 
-            self.context = self._playwright.chromium.launch_persistent_context(
-                user_data_dir=data_dir,
-                headless=use_headless,
-                viewport={"width": 1280, "height": 850},
-                args=args,
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-            )
+            launch_kwargs = {
+                "user_data_dir": data_dir,
+                "headless": use_headless,
+                "viewport": {"width": 1280, "height": 850},
+                "args": args,
+            }
+            try:
+                self.context = self._playwright.chromium.launch_persistent_context(
+                    channel="chrome",
+                    **launch_kwargs
+                )
+            except Exception:
+                self.context = self._playwright.chromium.launch_persistent_context(
+                    **launch_kwargs
+                )
 
-            # Page initialization & anti-detection script
             self.page = self.context.pages[0] if self.context.pages else self.context.new_page()
-            self.page.add_init_script("""
-                Object.defineProperty(navigator, 'webdriver', {
-                    get: () => undefined
-                });
-            """)
 
             # If X_AUTH_TOKEN is configured, inject cookie directly
             if config.x_auth_token and config.x_auth_token.strip():
