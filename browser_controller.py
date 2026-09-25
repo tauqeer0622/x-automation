@@ -126,7 +126,7 @@ class BrowserController:
             return []
 
         results: List[Dict[str, Any]] = []
-        encoded_query = urllib.parse.quote(f"{query} lang:en -is:retweet -is:reply")
+        encoded_query = urllib.parse.quote(f"{query} -is:retweet -is:reply")
         search_url = f"https://x.com/search?q={encoded_query}&f=live"
 
         try:

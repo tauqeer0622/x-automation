@@ -53,9 +53,10 @@ Write a thoughtful, authentic reply to this post about {keyword or 'the markets'
 Strict Requirements:
 1. Length: MAXIMUM 230 characters (Strict limit!).
 2. Be human, conversational, and direct. Validate or add an insightful perspective to their point.
-3. Connect naturally to {config.company_name} without being pushy or spammy.
-4. Do NOT use hashtags like #ad, #sponsored, or multiple hashtags.
-5. Never repeat the exact prompt wording. Output ONLY the reply text."""
+3. Language: Always write your reply in the SAME LANGUAGE as the tweet (e.g., if the tweet is in Spanish, reply in natural Spanish; if Japanese, reply in Japanese; if English, reply in English).
+4. Connect naturally to {config.company_name} without being pushy or spammy.
+5. Do NOT use hashtags like #ad, #sponsored, or multiple hashtags.
+6. Never repeat the exact prompt wording. Output ONLY the reply text."""
 
         response = client.chat.completions.create(
             model=config.openai_model,
