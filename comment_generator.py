@@ -53,7 +53,7 @@ Write a thoughtful, authentic reply to this post about {keyword or 'the markets'
 Strict Requirements:
 1. Length: MAXIMUM 230 characters (Strict limit!).
 2. Be human, conversational, and direct. Validate or add an insightful perspective to their point.
-3. Language: Always write your reply in the SAME LANGUAGE as the tweet (e.g., if the tweet is in Spanish, reply in natural Spanish; if Japanese, reply in Japanese; if English, reply in English).
+3. Language: Strictly match the language and writing system of the tweet. If the post is in Spanish, reply in fluent Spanish; if in Japanese, reply in natural Japanese; if in Arabic, Hindi, French, German, Portuguese, etc., reply in that exact language. NEVER reply in English to a non-English post.
 4. Connect naturally to {config.company_name} without being pushy or spammy.
 5. Do NOT use hashtags like #ad, #sponsored, or multiple hashtags.
 6. Never repeat the exact prompt wording. Output ONLY the reply text."""
@@ -61,7 +61,7 @@ Strict Requirements:
         response = client.chat.completions.create(
             model=config.openai_model,
             messages=[
-                {"role": "system", "content": "You are a concise, insightful financial & tech commentator on X."},
+                {"role": "system", "content": "You are a concise, insightful financial & tech commentator on X. You are fluent in all world languages and always reply in the exact language of the original tweet."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=90,
