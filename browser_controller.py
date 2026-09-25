@@ -190,6 +190,17 @@ class BrowserController:
                         add_restricted_user(author, reason="protected_account")
                         continue
 
+                    # FEED-LEVEL REPLY RESTRICTION FILTER: Check if reply button is disabled or restricted
+                    reply_btn_feed = art.query_selector('button[data-testid="reply"]')
+                    if reply_btn_feed:
+                        is_disabled = (
+                            reply_btn_feed.get_attribute("disabled") is not None
+                            or reply_btn_feed.get_attribute("aria-disabled") == "true"
+                        )
+                        if is_disabled:
+                            add_restricted_user(author, reason="replies_restricted_on_feed")
+                            continue
+
 
                     # Extract Tweet Text
                     text_elem = art.query_selector('[data-testid="tweetText"]')
